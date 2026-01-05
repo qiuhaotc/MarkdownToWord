@@ -466,21 +466,31 @@ public class MarkdownToWordConverter
         // Create a proper Word hyperlink with relationship
         if (_mainPart == null) return;
         
-        // Add hyperlink relationship to the document
-        var hyperlinkRel = _mainPart.AddHyperlinkRelationship(new Uri(link.Url ?? "", UriKind.Absolute), true);
-        
-        // Create hyperlink element
-        var hyperlink = new Hyperlink(new Run(
-            new RunProperties(
-                new RunStyle { Val = "Hyperlink" }
-            ),
-            new Text(GetLinkText(link)) { Space = SpaceProcessingModeValues.Preserve }
-        ))
+        try
         {
-            Id = hyperlinkRel.Id
-        };
-        
-        paragraph.AppendChild(hyperlink);
+            // Add hyperlink relationship to the document
+            var hyperlinkRel = _mainPart.AddHyperlinkRelationship(new Uri(link.Url ?? "", UriKind.Absolute), true);
+            
+            // Create hyperlink element with explicit styling
+            var hyperlink = new Hyperlink(new Run(
+                new RunProperties(
+                    new Underline { Val = UnderlineValues.Single },
+                    new Color { Val = "0563C1" } // Standard blue hyperlink color
+                ),
+                new Text(GetLinkText(link)) { Space = SpaceProcessingModeValues.Preserve }
+            ))
+            {
+                Id = hyperlinkRel.Id
+            };
+            
+            paragraph.AppendChild(hyperlink);
+        }
+        catch
+        {
+            // If hyperlink creation fails, add as regular text
+            var run = new Run(new Text(GetLinkText(link)) { Space = SpaceProcessingModeValues.Preserve });
+            paragraph.AppendChild(run);
+        }
     }
     
     private string GetLinkText(LinkInline link)
@@ -505,7 +515,17 @@ public class MarkdownToWordConverter
             // Try to download and embed the image using static HttpClient
             var imageBytes = Task.Run(async () => await _httpClient.GetByteArrayAsync(imageUrl)).GetAwaiter().GetResult();
             
-            if (_mainPart == null) return;
+            if (_mainPart == null)
+            {
+                AddImageFallback(altText, run);
+                return;
+            }
+            
+            if (imageBytes == null || imageBytes.Length == 0)
+            {
+                AddImageFallback(altText, run);
+                return;
+            }
             
             // Determine image type from URL and add image part
             var imagePart = AddImagePartByType(_mainPart, imageUrl, imageBytes);
@@ -554,19 +574,22 @@ public class MarkdownToWordConverter
             
             run.AppendChild(element);
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex)
         {
-            // Network or HTTP error - show alt text
+            // Network or HTTP error - show alt text with error info
+            Console.WriteLine($"Image download failed for {imageUrl}: {ex.Message}");
             AddImageFallback(altText, run);
         }
-        catch (TaskCanceledException)
+        catch (TaskCanceledException ex)
         {
             // Timeout - show alt text
+            Console.WriteLine($"Image download timeout for {imageUrl}: {ex.Message}");
             AddImageFallback(altText, run);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Any other error (invalid format, etc.) - show alt text
+            Console.WriteLine($"Image embedding failed for {imageUrl}: {ex.Message}");
             AddImageFallback(altText, run);
         }
     }
