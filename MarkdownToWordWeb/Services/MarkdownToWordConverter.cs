@@ -140,12 +140,56 @@ public class MarkdownToWordConverter
     {
         foreach (var inline in container)
         {
-            var run = new Run();
-            ProcessInline(inline, run);
-            if (run.HasChildren)
-            {
-                paragraph.AppendChild(run);
-            }
+            ProcessInlineIntoParagraph(inline, paragraph);
+        }
+    }
+    
+    private void ProcessInlineIntoParagraph(Inline inline, Paragraph paragraph)
+    {
+        switch (inline)
+        {
+            case LinkInline link:
+                if (link.IsImage)
+                {
+                    // Handle images - embed actual images from URLs
+                    if (!string.IsNullOrEmpty(link.Url))
+                    {
+                        var altText = link.FirstChild is LiteralInline lit ? lit.Content.ToString() : "";
+                        var run = new Run();
+                        AddImage(link.Url, altText, run);
+                        if (run.HasChildren)
+                        {
+                            paragraph.AppendChild(run);
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle regular links - create proper Word hyperlinks
+                    if (!string.IsNullOrEmpty(link.Url))
+                    {
+                        CreateHyperlinkInParagraph(link, paragraph);
+                    }
+                    else
+                    {
+                        // If no URL, just render the text
+                        var run = new Run();
+                        AppendInlines(link, run);
+                        if (run.HasChildren)
+                        {
+                            paragraph.AppendChild(run);
+                        }
+                    }
+                }
+                break;
+            default:
+                var defaultRun = new Run();
+                ProcessInline(inline, defaultRun);
+                if (defaultRun.HasChildren)
+                {
+                    paragraph.AppendChild(defaultRun);
+                }
+                break;
         }
     }
 
@@ -191,30 +235,6 @@ public class MarkdownToWordConverter
                 foreach (var child in codeRun.ChildElements.ToList())
                 {
                     run.AppendChild(child.CloneNode(true));
-                }
-                break;
-            case LinkInline link:
-                if (link.IsImage)
-                {
-                    // Handle images - embed actual images from URLs
-                    if (!string.IsNullOrEmpty(link.Url))
-                    {
-                        var altText = link.FirstChild is LiteralInline lit ? lit.Content.ToString() : "";
-                        AddImage(link.Url, altText, run);
-                    }
-                }
-                else
-                {
-                    // Handle regular links - create proper Word hyperlinks
-                    if (!string.IsNullOrEmpty(link.Url))
-                    {
-                        CreateHyperlink(link, run);
-                    }
-                    else
-                    {
-                        // If no URL, just render the text
-                        AppendInlines(link, run);
-                    }
                 }
                 break;
             case LineBreakInline:
@@ -441,39 +461,41 @@ public class MarkdownToWordConverter
         body.AppendChild(paragraph);
     }
 
-    private void CreateHyperlink(LinkInline link, Run run)
+    private void CreateHyperlinkInParagraph(LinkInline link, Paragraph paragraph)
     {
-        // Create a hyperlink in Word document
-        // Note: In OpenXML, hyperlinks need to be added at the paragraph level
-        // For simplicity, we'll create a styled run that looks like a hyperlink
-        // and append the URL as a relationship
+        // Create a proper Word hyperlink with relationship
+        if (_mainPart == null) return;
         
-        var linkRun = new Run();
-        var linkProps = new RunProperties(
-            new Underline { Val = UnderlineValues.Single },
-            new Color { Val = "0563C1" }
-        );
-        linkRun.AppendChild(linkProps);
+        // Add hyperlink relationship to the document
+        var hyperlinkRel = _mainPart.AddHyperlinkRelationship(new Uri(link.Url ?? "", UriKind.Absolute), true);
         
-        // Get the link text
+        // Create hyperlink element
+        var hyperlink = new Hyperlink(new Run(
+            new RunProperties(
+                new RunStyle { Val = "Hyperlink" }
+            ),
+            new Text(GetLinkText(link)) { Space = SpaceProcessingModeValues.Preserve }
+        ))
+        {
+            Id = hyperlinkRel.Id
+        };
+        
+        paragraph.AppendChild(hyperlink);
+    }
+    
+    private string GetLinkText(LinkInline link)
+    {
+        // Extract text from link
         foreach (var inline in link)
         {
             if (inline is LiteralInline literal)
             {
-                linkRun.AppendChild(new Text(literal.Content.ToString()) { Space = SpaceProcessingModeValues.Preserve });
+                return literal.Content.ToString();
             }
         }
         
-        // If link has no text, use URL as text
-        if (!linkRun.Elements<Text>().Any())
-        {
-            linkRun.AppendChild(new Text(link.Url ?? "") { Space = SpaceProcessingModeValues.Preserve });
-        }
-        
-        foreach (var child in linkRun.ChildElements.ToList())
-        {
-            run.AppendChild(child.CloneNode(true));
-        }
+        // If no text, use URL
+        return link.Url ?? "";
     }
 
     private void AddImage(string imageUrl, string altText, Run run)
