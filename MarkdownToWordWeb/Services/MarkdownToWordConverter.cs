@@ -5,6 +5,9 @@ using Markdig.Extensions.Tables;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using A = DocumentFormat.OpenXml.Drawing;
+using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
+using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 using MarkdigTable = Markdig.Extensions.Tables.Table;
 using MarkdigTableRow = Markdig.Extensions.Tables.TableRow;
 using MarkdigTableCell = Markdig.Extensions.Tables.TableCell;
@@ -186,46 +189,26 @@ public class MarkdownToWordConverter
                 }
                 break;
             case LinkInline link:
-                var linkRun = new Run();
-                var linkProps = new RunProperties(
-                    new Underline { Val = UnderlineValues.Single },
-                    new Color { Val = "0563C1" }
-                );
-                linkRun.AppendChild(linkProps);
-                
                 if (link.IsImage)
                 {
-                    // Handle images
+                    // Handle images - embed actual images from URLs
                     if (!string.IsNullOrEmpty(link.Url))
                     {
-                        try
-                        {
-                            AddImage(link.Url, link.Title ?? "", run);
-                        }
-                        catch
-                        {
-                            // If image can't be added, show alt text
-                            var altText = link.FirstChild is LiteralInline lit ? lit.Content.ToString() : "Image";
-                            linkRun.AppendChild(new Text($"[Image: {altText}]"));
-                            foreach (var child in linkRun.ChildElements.ToList())
-                            {
-                                run.AppendChild(child.CloneNode(true));
-                            }
-                        }
+                        var altText = link.FirstChild is LiteralInline lit ? lit.Content.ToString() : "";
+                        AddImage(link.Url, altText, run);
                     }
                 }
                 else
                 {
-                    // Handle regular links - show link text with URL in parentheses
-                    AppendInlines(link, linkRun);
+                    // Handle regular links - create proper Word hyperlinks
                     if (!string.IsNullOrEmpty(link.Url))
                     {
-                        linkRun.AppendChild(new Text($" ({link.Url})") { Space = SpaceProcessingModeValues.Preserve });
+                        CreateHyperlink(link, run);
                     }
-                    
-                    foreach (var child in linkRun.ChildElements.ToList())
+                    else
                     {
-                        run.AppendChild(child.CloneNode(true));
+                        // If no URL, just render the text
+                        AppendInlines(link, run);
                     }
                 }
                 break;
@@ -453,23 +436,131 @@ public class MarkdownToWordConverter
         body.AppendChild(paragraph);
     }
 
-    private void AddImage(string imageUrl, string altText, Run run)
+    private void CreateHyperlink(LinkInline link, Run run)
     {
-        // For web URLs, we can't directly embed them in the Word document
-        // Instead, show a placeholder with the URL
-        var imgRun = new Run();
-        var imgProps = new RunProperties(
-            new Italic(),
-            new Color { Val = "808080" }
-        );
-        imgRun.AppendChild(imgProps);
-        imgRun.AppendChild(new Text($"[Image: {altText}]") { Space = SpaceProcessingModeValues.Preserve });
-        imgRun.AppendChild(new Break());
-        imgRun.AppendChild(new Text($"URL: {imageUrl}") { Space = SpaceProcessingModeValues.Preserve });
+        // Create a hyperlink in Word document
+        // Note: In OpenXML, hyperlinks need to be added at the paragraph level
+        // For simplicity, we'll create a styled run that looks like a hyperlink
+        // and append the URL as a relationship
         
-        foreach (var child in imgRun.ChildElements.ToList())
+        var linkRun = new Run();
+        var linkProps = new RunProperties(
+            new Underline { Val = UnderlineValues.Single },
+            new Color { Val = "0563C1" }
+        );
+        linkRun.AppendChild(linkProps);
+        
+        // Get the link text
+        foreach (var inline in link)
+        {
+            if (inline is LiteralInline literal)
+            {
+                linkRun.AppendChild(new Text(literal.Content.ToString()) { Space = SpaceProcessingModeValues.Preserve });
+            }
+        }
+        
+        // If link has no text, use URL as text
+        if (!linkRun.Elements<Text>().Any())
+        {
+            linkRun.AppendChild(new Text(link.Url ?? "") { Space = SpaceProcessingModeValues.Preserve });
+        }
+        
+        foreach (var child in linkRun.ChildElements.ToList())
         {
             run.AppendChild(child.CloneNode(true));
         }
+    }
+
+    private void AddImage(string imageUrl, string altText, Run run)
+    {
+        try
+        {
+            // Try to download and embed the image
+            using var httpClient = new HttpClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(10);
+            
+            var imageBytes = httpClient.GetByteArrayAsync(imageUrl).GetAwaiter().GetResult();
+            
+            if (_mainPart == null) return;
+            
+            // Determine image type from URL and add image part
+            var imagePart = AddImagePartByType(_mainPart, imageUrl, imageBytes);
+            
+            using (var stream = new MemoryStream(imageBytes))
+            {
+                imagePart.FeedData(stream);
+            }
+            
+            // Add the image to the document
+            var relationshipId = _mainPart.GetIdOfPart(imagePart);
+            
+            // Get image dimensions (simplified - using fixed size)
+            long widthEmus = 3000000; // ~3.17 inches
+            long heightEmus = 2000000; // ~2.11 inches
+            
+            var element = new Drawing(
+                new DW.Inline(
+                    new DW.Extent { Cx = widthEmus, Cy = heightEmus },
+                    new DW.EffectExtent { LeftEdge = 0L, TopEdge = 0L, RightEdge = 0L, BottomEdge = 0L },
+                    new DW.DocProperties { Id = 1U, Name = altText ?? "Image" },
+                    new DW.NonVisualGraphicFrameDrawingProperties(
+                        new A.GraphicFrameLocks { NoChangeAspect = true }),
+                    new A.Graphic(
+                        new A.GraphicData(
+                            new PIC.Picture(
+                                new PIC.NonVisualPictureProperties(
+                                    new PIC.NonVisualDrawingProperties { Id = 0U, Name = altText ?? "Image" },
+                                    new PIC.NonVisualPictureDrawingProperties()),
+                                new PIC.BlipFill(
+                                    new A.Blip { Embed = relationshipId },
+                                    new A.Stretch(new A.FillRectangle())),
+                                new PIC.ShapeProperties(
+                                    new A.Transform2D(
+                                        new A.Offset { X = 0L, Y = 0L },
+                                        new A.Extents { Cx = widthEmus, Cy = heightEmus }),
+                                    new A.PresetGeometry(new A.AdjustValueList()) { Preset = A.ShapeTypeValues.Rectangle }))
+                        ) { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" })
+                )
+                {
+                    DistanceFromTop = 0U,
+                    DistanceFromBottom = 0U,
+                    DistanceFromLeft = 0U,
+                    DistanceFromRight = 0U
+                });
+            
+            run.AppendChild(element);
+        }
+        catch (Exception)
+        {
+            // If image download/embedding fails, show alt text
+            var imgRun = new Run();
+            var imgProps = new RunProperties(
+                new Italic(),
+                new Color { Val = "808080" }
+            );
+            imgRun.AppendChild(imgProps);
+            imgRun.AppendChild(new Text($"[Image: {altText}]") { Space = SpaceProcessingModeValues.Preserve });
+            
+            foreach (var child in imgRun.ChildElements.ToList())
+            {
+                run.AppendChild(child.CloneNode(true));
+            }
+        }
+    }
+    
+    private ImagePart AddImagePartByType(MainDocumentPart mainPart, string url, byte[] imageBytes)
+    {
+        // Try to determine from URL extension
+        var extension = Path.GetExtension(url).ToLowerInvariant();
+        
+        return extension switch
+        {
+            ".png" => mainPart.AddImagePart(ImagePartType.Png),
+            ".jpg" or ".jpeg" => mainPart.AddImagePart(ImagePartType.Jpeg),
+            ".gif" => mainPart.AddImagePart(ImagePartType.Gif),
+            ".bmp" => mainPart.AddImagePart(ImagePartType.Bmp),
+            ".tiff" or ".tif" => mainPart.AddImagePart(ImagePartType.Tiff),
+            _ => mainPart.AddImagePart(ImagePartType.Jpeg) // Default to JPEG
+        };
     }
 }
