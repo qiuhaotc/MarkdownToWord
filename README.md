@@ -20,6 +20,13 @@ Easily convert Markdown files to Word documents using C# and ASP.NET web applica
 - ✓ Bullet lists (- item or * item)
 - ✓ Numbered lists (1. item)
 - ✓ Paragraphs with proper spacing
+- ✓ **Tables** - Full table support with headers
+- ✓ **Links** - [text](url) format
+- ✓ **Images** - ![alt](url) format (shows as placeholder with URL)
+- ✓ **Code blocks** - Fenced code blocks with ``` 
+- ✓ **Inline code** - `code` format with styling
+- ✓ **Blockquotes** - > quote format
+- ✓ **Horizontal rules** - --- separator
 
 ## Technologies Used
 
