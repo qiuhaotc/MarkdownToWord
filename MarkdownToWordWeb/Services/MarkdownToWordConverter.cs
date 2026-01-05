@@ -5,7 +5,6 @@ using Markdig.Extensions.Tables;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
-using System.Text.RegularExpressions;
 using MarkdigTable = Markdig.Extensions.Tables.Table;
 using MarkdigTableRow = Markdig.Extensions.Tables.TableRow;
 using MarkdigTableCell = Markdig.Extensions.Tables.TableCell;
@@ -253,27 +252,31 @@ public class MarkdownToWordConverter
         
         foreach (var item in list.Cast<ListItemBlock>())
         {
+            bool isFirstBlock = true;
+            
             foreach (var block in item)
             {
                 if (block is ParagraphBlock paragraph)
                 {
                     var para = new Paragraph();
                     var paraProps = new ParagraphProperties(
-                        new Indentation { Left = "720", Hanging = "360" }
+                        new Indentation { Left = "720", Hanging = isFirstBlock ? "360" : "0" }
                     );
                     para.AppendChild(paraProps);
                     
                     var run = new Run();
                     
-                    // Add bullet or number
-                    if (list.IsOrdered)
+                    // Add bullet or number only for the first block in the list item
+                    if (isFirstBlock)
                     {
-                        run.AppendChild(new Text($"{itemNumber}. ") { Space = SpaceProcessingModeValues.Preserve });
-                        itemNumber++;
-                    }
-                    else
-                    {
-                        run.AppendChild(new Text("• ") { Space = SpaceProcessingModeValues.Preserve });
+                        if (list.IsOrdered)
+                        {
+                            run.AppendChild(new Text($"{itemNumber}. ") { Space = SpaceProcessingModeValues.Preserve });
+                        }
+                        else
+                        {
+                            run.AppendChild(new Text("• ") { Space = SpaceProcessingModeValues.Preserve });
+                        }
                     }
                     
                     para.AppendChild(run);
@@ -285,11 +288,19 @@ public class MarkdownToWordConverter
                     }
                     
                     body.AppendChild(para);
+                    isFirstBlock = false;
                 }
                 else
                 {
                     ConvertBlock(block, body);
+                    isFirstBlock = false;
                 }
+            }
+            
+            // Increment item number after processing all blocks in the list item
+            if (list.IsOrdered)
+            {
+                itemNumber++;
             }
         }
     }
@@ -394,8 +405,7 @@ public class MarkdownToWordConverter
         );
         run.AppendChild(runProps);
         
-        var code = codeBlock is FencedCodeBlock fenced ? fenced.Lines.ToString() : 
-                   codeBlock is CodeBlock cb ? cb.Lines.ToString() : "";
+        var code = codeBlock.Lines.ToString();
         
         run.AppendChild(new Text(code) { Space = SpaceProcessingModeValues.Preserve });
         paragraph.AppendChild(run);
