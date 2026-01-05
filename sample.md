@@ -55,8 +55,8 @@ Here's a table showing supported features:
 | Bold | ✓ | \*\*text\*\* format |
 | Italic | ✓ | \*text\* format |
 | Tables | ✓ | Full table support |
-| Links | ✓ | [text](https://www.dummy.abc) format |
-| Images | ✓ | ![alt](https://github-production-user-asset-6210df.s3.amazonaws.com/8034473/531969257-a5d5b8e1-2507-47b2-8b93-60c1ebec05b9.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20260105%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260105T140300Z&X-Amz-Expires=300&X-Amz-Signature=ceef54a4d29bb8729492ec00d8161a3061d5c1abbe82857cd13272b054722688&X-Amz-SignedHeaders=host) format |
+| Links | ✓ | [text](url) format |
+| Images | ✓ | ![alt](url) format |
 
 ### Code Blocks
 

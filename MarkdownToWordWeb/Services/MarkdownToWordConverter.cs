@@ -23,7 +23,7 @@ public class MarkdownToWordConverter
     {
         Timeout = TimeSpan.FromSeconds(10)
     };
-    
+
     private WordprocessingDocument? _wordDocument;
     private MainDocumentPart? _mainPart;
 
@@ -33,9 +33,9 @@ public class MarkdownToWordConverter
         var pipeline = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
             .Build();
-        
+
         var document = Markdown.Parse(markdownContent, pipeline);
-        
+
         // Create Word document in memory
         using var memoryStream = new MemoryStream();
         using (_wordDocument = WordprocessingDocument.Create(memoryStream, WordprocessingDocumentType.Document))
@@ -44,17 +44,17 @@ public class MarkdownToWordConverter
             _mainPart = _wordDocument.AddMainDocumentPart();
             _mainPart.Document = new Document();
             var body = new Body();
-            
+
             // Convert markdown AST to Word document
             foreach (var block in document)
             {
                 ConvertBlock(block, body);
             }
-            
+
             _mainPart.Document.AppendChild(body);
             _mainPart.Document.Save();
         }
-        
+
         return memoryStream.ToArray();
     }
 
@@ -96,7 +96,7 @@ public class MarkdownToWordConverter
     {
         var paragraph = new Paragraph();
         var run = new Run();
-        
+
         // Set heading style based on level
         var fontSize = heading.Level switch
         {
@@ -107,19 +107,19 @@ public class MarkdownToWordConverter
             5 => "20",
             _ => "18"
         };
-        
+
         var runProps = new RunProperties(
             new Bold(),
             new FontSize { Val = fontSize }
         );
         run.AppendChild(runProps);
-        
+
         // Extract text from inline elements
         if (heading.Inline != null)
         {
             AppendInlines(heading.Inline, run);
         }
-        
+
         paragraph.AppendChild(run);
         body.AppendChild(paragraph);
     }
@@ -127,12 +127,12 @@ public class MarkdownToWordConverter
     private void ConvertParagraph(ParagraphBlock paragraphBlock, Body body)
     {
         var paragraph = new Paragraph();
-        
+
         if (paragraphBlock.Inline != null)
         {
             ConvertInlines(paragraphBlock.Inline, paragraph);
         }
-        
+
         body.AppendChild(paragraph);
     }
 
@@ -143,7 +143,7 @@ public class MarkdownToWordConverter
             ProcessInlineIntoParagraph(inline, paragraph);
         }
     }
-    
+
     private void ProcessInlineIntoParagraph(Inline inline, Paragraph paragraph)
     {
         switch (inline)
@@ -203,7 +203,7 @@ public class MarkdownToWordConverter
             case EmphasisInline emphasis:
                 var emphasisRun = new Run();
                 var runProps = new RunProperties();
-                
+
                 if (emphasis.DelimiterCount == 2) // Bold
                 {
                     runProps.AppendChild(new Bold());
@@ -212,10 +212,10 @@ public class MarkdownToWordConverter
                 {
                     runProps.AppendChild(new Italic());
                 }
-                
+
                 emphasisRun.AppendChild(runProps);
                 AppendInlines(emphasis, emphasisRun);
-                
+
                 // Copy children from emphasisRun to the main run
                 foreach (var child in emphasisRun.ChildElements.ToList())
                 {
@@ -231,7 +231,7 @@ public class MarkdownToWordConverter
                 );
                 codeRun.AppendChild(codeProps);
                 codeRun.AppendChild(new Text(code.Content) { Space = SpaceProcessingModeValues.Preserve });
-                
+
                 foreach (var child in codeRun.ChildElements.ToList())
                 {
                     run.AppendChild(child.CloneNode(true));
@@ -257,11 +257,11 @@ public class MarkdownToWordConverter
     private void ConvertList(ListBlock list, Body body)
     {
         int itemNumber = 1;
-        
+
         foreach (var item in list.Cast<ListItemBlock>())
         {
             bool isFirstBlock = true;
-            
+
             foreach (var block in item)
             {
                 if (block is ParagraphBlock paragraph)
@@ -271,9 +271,9 @@ public class MarkdownToWordConverter
                         new Indentation { Left = "720", Hanging = isFirstBlock ? "360" : "0" }
                     );
                     para.AppendChild(paraProps);
-                    
+
                     var run = new Run();
-                    
+
                     // Add bullet or number only for the first block in the list item
                     if (isFirstBlock)
                     {
@@ -286,15 +286,15 @@ public class MarkdownToWordConverter
                             run.AppendChild(new Text("• ") { Space = SpaceProcessingModeValues.Preserve });
                         }
                     }
-                    
+
                     para.AppendChild(run);
-                    
+
                     // Add content
                     if (paragraph.Inline != null)
                     {
                         ConvertInlines(paragraph.Inline, para);
                     }
-                    
+
                     body.AppendChild(para);
                     isFirstBlock = false;
                 }
@@ -304,7 +304,7 @@ public class MarkdownToWordConverter
                     isFirstBlock = false;
                 }
             }
-            
+
             // Increment item number after processing all blocks in the list item
             if (list.IsOrdered)
             {
@@ -316,7 +316,7 @@ public class MarkdownToWordConverter
     private void ConvertTable(MarkdigTable table, Body body)
     {
         var wordTable = new WordTable();
-        
+
         // Table properties
         var tableProps = new TableProperties(
             new TableBorders(
@@ -330,29 +330,29 @@ public class MarkdownToWordConverter
             new TableWidth { Width = "5000", Type = TableWidthUnitValues.Pct }
         );
         wordTable.AppendChild(tableProps);
-        
+
         // Process table rows
         foreach (var row in table.Cast<MarkdigTableRow>())
         {
             var wordRow = new WordTableRow();
-            
+
             foreach (var cell in row.Cast<MarkdigTableCell>())
             {
                 var wordCell = new WordTableCell();
-                
+
                 // Cell properties
                 var cellProps = new TableCellProperties(
                     new TableCellWidth { Type = TableWidthUnitValues.Auto }
                 );
-                
+
                 // Header row styling
                 if (row.IsHeader)
                 {
                     cellProps.AppendChild(new Shading { Val = ShadingPatternValues.Clear, Fill = "D9D9D9" });
                 }
-                
+
                 wordCell.AppendChild(cellProps);
-                
+
                 // Process cell content
                 foreach (var block in cell)
                 {
@@ -378,21 +378,21 @@ public class MarkdownToWordConverter
                         wordCell.AppendChild(para);
                     }
                 }
-                
+
                 // Ensure cell has at least one paragraph
                 if (!wordCell.Elements<Paragraph>().Any())
                 {
                     wordCell.AppendChild(new Paragraph());
                 }
-                
+
                 wordRow.AppendChild(wordCell);
             }
-            
+
             wordTable.AppendChild(wordRow);
         }
-        
+
         body.AppendChild(wordTable);
-        
+
         // Add spacing after table
         body.AppendChild(new Paragraph());
     }
@@ -405,16 +405,16 @@ public class MarkdownToWordConverter
             new SpacingBetweenLines { Before = "100", After = "100" }
         );
         paragraph.AppendChild(paraProps);
-        
+
         var run = new Run();
         var runProps = new RunProperties(
             new RunFonts { Ascii = "Courier New" },
             new FontSize { Val = "20" }
         );
         run.AppendChild(runProps);
-        
+
         var code = codeBlock.Lines.ToString();
-        
+
         run.AppendChild(new Text(code) { Space = SpaceProcessingModeValues.Preserve });
         paragraph.AppendChild(run);
         body.AppendChild(paragraph);
@@ -434,12 +434,12 @@ public class MarkdownToWordConverter
                     )
                 );
                 para.AppendChild(paraProps);
-                
+
                 if (paragraph.Inline != null)
                 {
                     ConvertInlines(paragraph.Inline, para);
                 }
-                
+
                 body.AppendChild(para);
             }
             else
@@ -465,12 +465,23 @@ public class MarkdownToWordConverter
     {
         // Create a proper Word hyperlink with relationship
         if (_mainPart == null) return;
-        
+
         try
         {
+            Uri uri;
+            try
+            {
+                uri = new Uri(link.Url ?? "", UriKind.Absolute);
+            }
+            catch (Exception)
+            {
+                // TODO: Add logs for invalid URL formats
+                uri = new Uri("http://invalid-url/", UriKind.Absolute);
+            }
+
             // Add hyperlink relationship to the document
-            var hyperlinkRel = _mainPart.AddHyperlinkRelationship(new Uri(link.Url ?? "", UriKind.Absolute), true);
-            
+            var hyperlinkRel = _mainPart.AddHyperlinkRelationship(uri, true);
+
             // Create hyperlink element with explicit styling
             var hyperlink = new Hyperlink(new Run(
                 new RunProperties(
@@ -482,7 +493,7 @@ public class MarkdownToWordConverter
             {
                 Id = hyperlinkRel.Id
             };
-            
+
             paragraph.AppendChild(hyperlink);
         }
         catch
@@ -492,7 +503,7 @@ public class MarkdownToWordConverter
             paragraph.AppendChild(run);
         }
     }
-    
+
     private string GetLinkText(LinkInline link)
     {
         // Extract text from link
@@ -503,7 +514,7 @@ public class MarkdownToWordConverter
                 return literal.Content.ToString();
             }
         }
-        
+
         // If no text, use URL
         return link.Url ?? "";
     }
@@ -514,34 +525,34 @@ public class MarkdownToWordConverter
         {
             // Try to download and embed the image using static HttpClient
             var imageBytes = Task.Run(async () => await _httpClient.GetByteArrayAsync(imageUrl)).GetAwaiter().GetResult();
-            
+
             if (_mainPart == null)
             {
                 AddImageFallback(altText, run);
                 return;
             }
-            
+
             if (imageBytes == null || imageBytes.Length == 0)
             {
                 AddImageFallback(altText, run);
                 return;
             }
-            
+
             // Determine image type from URL and add image part
             var imagePart = AddImagePartByType(_mainPart, imageUrl, imageBytes);
-            
+
             using (var stream = new MemoryStream(imageBytes))
             {
                 imagePart.FeedData(stream);
             }
-            
+
             // Add the image to the document
             var relationshipId = _mainPart.GetIdOfPart(imagePart);
-            
+
             // Get image dimensions (simplified - using fixed size)
             long widthEmus = 3000000; // ~3.17 inches
             long heightEmus = 2000000; // ~2.11 inches
-            
+
             var element = new Drawing(
                 new DW.Inline(
                     new DW.Extent { Cx = widthEmus, Cy = heightEmus },
@@ -563,7 +574,8 @@ public class MarkdownToWordConverter
                                         new A.Offset { X = 0L, Y = 0L },
                                         new A.Extents { Cx = widthEmus, Cy = heightEmus }),
                                     new A.PresetGeometry(new A.AdjustValueList()) { Preset = A.ShapeTypeValues.Rectangle }))
-                        ) { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" })
+                        )
+                        { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" })
                 )
                 {
                     DistanceFromTop = 0U,
@@ -571,7 +583,7 @@ public class MarkdownToWordConverter
                     DistanceFromLeft = 0U,
                     DistanceFromRight = 0U
                 });
-            
+
             run.AppendChild(element);
         }
         catch (HttpRequestException ex)
@@ -593,7 +605,7 @@ public class MarkdownToWordConverter
             AddImageFallback(altText, run);
         }
     }
-    
+
     private void AddImageFallback(string altText, Run run)
     {
         var imgRun = new Run();
@@ -603,18 +615,18 @@ public class MarkdownToWordConverter
         );
         imgRun.AppendChild(imgProps);
         imgRun.AppendChild(new Text($"[Image: {altText}]") { Space = SpaceProcessingModeValues.Preserve });
-        
+
         foreach (var child in imgRun.ChildElements.ToList())
         {
             run.AppendChild(child.CloneNode(true));
         }
     }
-    
+
     private ImagePart AddImagePartByType(MainDocumentPart mainPart, string url, byte[] imageBytes)
     {
         // Try to determine from URL extension
         var extension = Path.GetExtension(url).ToLowerInvariant();
-        
+
         return extension switch
         {
             ".png" => mainPart.AddImagePart(ImagePartType.Png),
