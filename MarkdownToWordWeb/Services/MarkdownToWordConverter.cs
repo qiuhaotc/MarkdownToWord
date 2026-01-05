@@ -19,6 +19,11 @@ namespace MarkdownToWordWeb.Services;
 
 public class MarkdownToWordConverter
 {
+    private static readonly HttpClient _httpClient = new HttpClient
+    {
+        Timeout = TimeSpan.FromSeconds(10)
+    };
+    
     private WordprocessingDocument? _wordDocument;
     private MainDocumentPart? _mainPart;
 
@@ -475,11 +480,8 @@ public class MarkdownToWordConverter
     {
         try
         {
-            // Try to download and embed the image
-            using var httpClient = new HttpClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(10);
-            
-            var imageBytes = httpClient.GetByteArrayAsync(imageUrl).GetAwaiter().GetResult();
+            // Try to download and embed the image using static HttpClient
+            var imageBytes = Task.Run(async () => await _httpClient.GetByteArrayAsync(imageUrl)).GetAwaiter().GetResult();
             
             if (_mainPart == null) return;
             
@@ -530,21 +532,36 @@ public class MarkdownToWordConverter
             
             run.AppendChild(element);
         }
+        catch (HttpRequestException)
+        {
+            // Network or HTTP error - show alt text
+            AddImageFallback(altText, run);
+        }
+        catch (TaskCanceledException)
+        {
+            // Timeout - show alt text
+            AddImageFallback(altText, run);
+        }
         catch (Exception)
         {
-            // If image download/embedding fails, show alt text
-            var imgRun = new Run();
-            var imgProps = new RunProperties(
-                new Italic(),
-                new Color { Val = "808080" }
-            );
-            imgRun.AppendChild(imgProps);
-            imgRun.AppendChild(new Text($"[Image: {altText}]") { Space = SpaceProcessingModeValues.Preserve });
-            
-            foreach (var child in imgRun.ChildElements.ToList())
-            {
-                run.AppendChild(child.CloneNode(true));
-            }
+            // Any other error (invalid format, etc.) - show alt text
+            AddImageFallback(altText, run);
+        }
+    }
+    
+    private void AddImageFallback(string altText, Run run)
+    {
+        var imgRun = new Run();
+        var imgProps = new RunProperties(
+            new Italic(),
+            new Color { Val = "808080" }
+        );
+        imgRun.AppendChild(imgProps);
+        imgRun.AppendChild(new Text($"[Image: {altText}]") { Space = SpaceProcessingModeValues.Preserve });
+        
+        foreach (var child in imgRun.ChildElements.ToList())
+        {
+            run.AppendChild(child.CloneNode(true));
         }
     }
     
