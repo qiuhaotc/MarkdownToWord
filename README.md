@@ -40,20 +40,15 @@ Easily convert Markdown files to Word documents using C# and ASP.NET web applica
 1. Clone the repository:
    ```bash
    git clone https://github.com/qiuhaotc/MarkdownToWord.git
-   cd MarkdownToWord
+   cd MarkdownToWord/MarkdownToWordWeb
    ```
 
-2. Navigate to the web application directory:
-   ```bash
-   cd MarkdownToWordWeb
-   ```
-
-3. Run the application:
+2. Run the application:
    ```bash
    dotnet run
    ```
 
-4. Open your browser and navigate to:
+3. Open your browser and navigate to:
    ```
    http://localhost:5000
    ```
@@ -127,7 +122,6 @@ MarkdownToWord/
 
 - **Markdig** (0.44.0): Markdown parsing
 - **DocumentFormat.OpenXml** (3.3.0): Word document generation
-- **ClosedXML** (0.105.0): Additional Excel/document support
 
 ## License
 
