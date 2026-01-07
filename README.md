@@ -1,16 +1,19 @@
 # MarkdownToWord
 
-Easily convert Markdown files to Word documents using C# and ASP.NET web application.
+Easily convert Markdown files to Word documents using C# and Blazor WebAssembly - all processing happens locally in your browser!
 
 ![Web Interface](https://github.com/user-attachments/assets/1b4d50a7-ed57-4131-ba33-662279c31ab4)
 
 ## Features
 
+- 🔒 **Privacy First**: All conversions are processed locally in your browser. Your data is never uploaded to any server!
+- 🌐 **Bilingual Support**: Built-in language switching between English and Chinese (中文)
 - 📁 **File Upload**: Upload `.md`, `.markdown`, or `.txt` files for conversion
 - 📝 **Text Input**: Paste or type markdown content directly in the browser
-- 🎨 **Formatting Support**: Converts headers, bold, italic, lists, and paragraphs
+- 🎨 **Rich Formatting**: Full support for headers, bold, italic, lists, tables, links, images, code blocks, and more
 - 💻 **Modern Web UI**: Clean, responsive interface built with Bootstrap
 - ⚡ **Fast Conversion**: Uses Markdig and DocumentFormat.OpenXml for efficient processing
+- 📦 **No Backend Required**: Pure client-side application - can be hosted as static files
 
 ## Supported Markdown Features
 
@@ -30,11 +33,12 @@ Easily convert Markdown files to Word documents using C# and ASP.NET web applica
 
 ## Technologies Used
 
-- **ASP.NET Core 8.0**: Modern web framework
-- **Razor Pages**: Server-side page rendering
+- **Blazor WebAssembly**: Client-side web framework running on WebAssembly
+- **ASP.NET Core 8.0**: .NET runtime
 - **Markdig**: High-performance Markdown parser
 - **DocumentFormat.OpenXml**: Create Word documents (.docx)
 - **Bootstrap 5**: Responsive UI framework
+- **C# in Browser**: All conversion logic runs client-side via WebAssembly
 
 ## Getting Started
 
@@ -60,16 +64,30 @@ Easily convert Markdown files to Word documents using C# and ASP.NET web applica
    http://localhost:5000
    ```
 
+Note: Since this is a Blazor WebAssembly application, the first load may take a moment as it downloads the .NET runtime to your browser.
+
 ### Building for Production
 
-To build the application for production:
+To build the application for production deployment as static files:
 
 ```bash
 cd MarkdownToWordWeb
 dotnet publish -c Release -o ./publish
 ```
 
+The published files in `./publish/wwwroot` can be hosted on any static file hosting service like:
+- GitHub Pages
+- Netlify
+- Vercel
+- Azure Static Web Apps
+- AWS S3 + CloudFront
+- Any web server (nginx, Apache, IIS, etc.)
+
 ## Usage
+
+### Language Selection
+
+Switch between English and Chinese (中文) using the language buttons at the top of the page.
 
 ### Method 1: Upload a Markdown File
 
@@ -113,14 +131,20 @@ This is a **bold** statement and this is *italic*.
 
 ```
 MarkdownToWord/
-├── MarkdownToWordWeb/           # ASP.NET web application
-│   ├── Pages/                   # Razor Pages
-│   │   ├── Index.cshtml        # Main conversion page
-│   │   └── Index.cshtml.cs     # Page logic
+├── MarkdownToWordWeb/           # Blazor WebAssembly application
+│   ├── Pages/                   # Razor components
+│   │   └── Index.razor          # Main conversion page
 │   ├── Services/                # Business logic
 │   │   └── MarkdownToWordConverter.cs  # Conversion service
+│   ├── Shared/                  # Shared components
+│   │   └── MainLayout.razor     # App layout
 │   ├── wwwroot/                 # Static files (CSS, JS, libs)
+│   │   ├── index.html           # Entry HTML page
+│   │   ├── js/                  # JavaScript files
+│   │   └── css/                 # Stylesheets
+│   ├── App.razor                # Root component
 │   ├── Program.cs               # Application entry point
+│   ├── _Imports.razor           # Global using statements
 │   └── MarkdownToWordWeb.csproj # Project file
 └── README.md                    # This file
 ```
@@ -129,6 +153,34 @@ MarkdownToWord/
 
 - **Markdig** (0.44.0): Markdown parsing
 - **DocumentFormat.OpenXml** (3.3.0): Word document generation
+- **Microsoft.AspNetCore.Components.WebAssembly** (8.0.0): Blazor WebAssembly framework
+
+## How It Works
+
+This application uses Blazor WebAssembly to run C# code directly in your browser:
+
+1. **Client-Side Processing**: The entire conversion happens in your browser using WebAssembly. No data is sent to any server.
+2. **Privacy & Security**: Your markdown content and generated Word documents never leave your computer.
+3. **Offline Capable**: Once loaded, the application can work offline (except for downloading images from URLs).
+4. **Image Handling**: Images referenced in markdown (via URLs) are downloaded and embedded into the Word document.
+
+## Deployment
+
+Since this is a static Blazor WebAssembly application, you can deploy it anywhere:
+
+### GitHub Pages
+1. Build: `dotnet publish -c Release -o ./publish`
+2. Copy contents of `./publish/wwwroot` to your GitHub Pages repository
+3. Add a `.nojekyll` file to prevent Jekyll processing
+
+### Netlify/Vercel
+1. Build: `dotnet publish -c Release -o ./publish`
+2. Deploy the `wwwroot` folder from `./publish/wwwroot`
+
+### Traditional Web Server
+1. Build: `dotnet publish -c Release -o ./publish`
+2. Copy contents of `./publish/wwwroot` to your web server
+3. Configure server to handle client-side routing (all routes should serve `index.html`)
 
 ## License
 
