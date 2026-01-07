@@ -7,20 +7,41 @@
 
 <div class="container mt-5">
     <div class="text-center mb-4">
-        <h1 class="display-4" tabindex="-1">Markdown to Word Converter</h1>
-        <p class="lead">Easily convert your Markdown files to Word documents</p>
+        <div class="d-flex justify-content-end mb-2">
+            <button @onclick="@(() => SwitchLanguage("en"))" class="btn btn-sm @(currentLanguage == "en" ? "btn-primary" : "btn-outline-secondary") me-2">English</button>
+            <button @onclick="@(() => SwitchLanguage("zh"))" class="btn btn-sm @(currentLanguage == "zh" ? "btn-primary" : "btn-outline-secondary")">中文</button>
+        </div>
+        <h1 class="display-4" tabindex="-1">@T("Title")</h1>
+        <p class="lead">@T("Subtitle")</p>
+        <p class="text-muted">
+            <small>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shield-check" viewBox="0 0 16 16">
+                    <path d="M5.338 1.59a61.44 61.44 0 0 0-2.837.856.481.481 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.725 10.725 0 0 0 2.287 2.233c.346.244.652.42.893.533.12.057.218.095.293.118a.55.55 0 0 0 .101.025.615.615 0 0 0 .1-.025c.076-.023.174-.061.294-.118.24-.113.547-.29.893-.533a10.726 10.726 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.775 11.775 0 0 1-2.517 2.453 7.159 7.159 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7.158 7.158 0 0 1-1.048-.625 11.777 11.777 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 62.456 62.456 0 0 1 5.072.56z"/>
+                    <path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/>
+                </svg>
+                @T("PrivacyNote")
+            </small>
+        </p>
+        <p>
+            <a href="https://github.com/qiuhaotc/MarkdownToWord" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-github" viewBox="0 0 16 16">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+                GitHub
+            </a>
+        </p>
     </div>
 
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="card shadow">
                 <div class="card-body">
-                    <h5 class="card-title mb-4">Upload Markdown File</h5>
+                    <h5 class="card-title mb-4">@T("UploadFileTitle")</h5>
                     
                     <div class="mb-3">
-                        <label for="markdownFile" class="form-label">Select Markdown File (.md)</label>
+                        <label for="markdownFile" class="form-label">@T("SelectFileLabel")</label>
                         <InputFile OnChange="@HandleFileSelected" class="form-control" id="markdownFile" accept=".md,.markdown,.txt" />
-                        <div class="form-text">Choose a Markdown file to convert to Word document</div>
+                        <div class="form-text">@T("SelectFileHelp")</div>
                     </div>
                     
                     <div class="d-grid">
@@ -28,11 +49,11 @@
                             @if (isProcessing)
                             {
                                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                <span> Converting...</span>
+                                <span> @T("Converting")</span>
                             }
                             else
                             {
-                                <span>Convert to Word</span>
+                                <span>@T("ConvertToWord")</span>
                             }
                         </button>
                     </div>
@@ -55,11 +76,11 @@
 
             <div class="card shadow mt-4">
                 <div class="card-body">
-                    <h5 class="card-title mb-3">Or Enter Markdown Text</h5>
+                    <h5 class="card-title mb-3">@T("OrEnterText")</h5>
                     
                     <div class="mb-3">
-                        <label for="markdownText" class="form-label">Markdown Content</label>
-                        <textarea @bind="markdownText" class="form-control" id="markdownText" rows="10" placeholder="Enter your markdown content here..."></textarea>
+                        <label for="markdownText" class="form-label">@T("MarkdownContent")</label>
+                        <textarea @bind="markdownText" class="form-control" id="markdownText" rows="10" placeholder="@T("TextPlaceholder")"></textarea>
                     </div>
                     
                     <div class="d-grid">
@@ -67,11 +88,11 @@
                             @if (isProcessing)
                             {
                                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                <span> Converting...</span>
+                                <span> @T("Converting")</span>
                             }
                             else
                             {
-                                <span>Convert Text to Word</span>
+                                <span>@T("ConvertTextToWord")</span>
                             }
                         </button>
                     </div>
@@ -80,27 +101,27 @@
 
             <div class="card shadow mt-4">
                 <div class="card-body">
-                    <h5 class="card-title">Supported Markdown Features</h5>
+                    <h5 class="card-title">@T("SupportedFeatures")</h5>
                     <div class="row">
                         <div class="col-md-6">
                             <ul class="list-unstyled">
-                                <li>✓ Headings (# H1, ## H2, etc.)</li>
-                                <li>✓ Bold (**text**)</li>
-                                <li>✓ Italic (*text*)</li>
-                                <li>✓ Bullet lists (- item or * item)</li>
-                                <li>✓ Numbered lists (1. item)</li>
-                                <li>✓ Paragraphs</li>
+                                <li>✓ @T("Feature1")</li>
+                                <li>✓ @T("Feature2")</li>
+                                <li>✓ @T("Feature3")</li>
+                                <li>✓ @T("Feature4")</li>
+                                <li>✓ @T("Feature5")</li>
+                                <li>✓ @T("Feature6")</li>
                             </ul>
                         </div>
                         <div class="col-md-6">
                             <ul class="list-unstyled">
-                                <li>✓ Tables</li>
-                                <li>✓ Hyperlinks [text](url)</li>
-                                <li>✓ Embedded Images ![alt](url)</li>
-                                <li>✓ Code blocks (```)</li>
-                                <li>✓ Inline code (`code`)</li>
-                                <li>✓ Blockquotes (>)</li>
-                                <li>✓ Horizontal rules (---)</li>
+                                <li>✓ @T("Feature7")</li>
+                                <li>✓ @T("Feature8")</li>
+                                <li>✓ @T("Feature9")</li>
+                                <li>✓ @T("Feature10")</li>
+                                <li>✓ @T("Feature11")</li>
+                                <li>✓ @T("Feature12")</li>
+                                <li>✓ @T("Feature13")</li>
                             </ul>
                         </div>
                     </div>
@@ -116,6 +137,85 @@
     private string? errorMessage;
     private string? successMessage;
     private bool isProcessing = false;
+    private string currentLanguage = "en";
+
+    private Dictionary<string, Dictionary<string, string>> translations = new()
+    {
+        ["en"] = new()
+        {
+            ["Title"] = "Markdown to Word Converter",
+            ["Subtitle"] = "Easily convert your Markdown files to Word documents",
+            ["PrivacyNote"] = "All conversions are processed locally in your browser. Your data is never uploaded to any server.",
+            ["UploadFileTitle"] = "Upload Markdown File",
+            ["SelectFileLabel"] = "Select Markdown File (.md)",
+            ["SelectFileHelp"] = "Choose a Markdown file to convert to Word document",
+            ["ConvertToWord"] = "Convert to Word",
+            ["Converting"] = "Converting...",
+            ["OrEnterText"] = "Or Enter Markdown Text",
+            ["MarkdownContent"] = "Markdown Content",
+            ["TextPlaceholder"] = "Enter your markdown content here...",
+            ["ConvertTextToWord"] = "Convert Text to Word",
+            ["SupportedFeatures"] = "Supported Markdown Features",
+            ["Feature1"] = "Headings (# H1, ## H2, etc.)",
+            ["Feature2"] = "Bold (**text**)",
+            ["Feature3"] = "Italic (*text*)",
+            ["Feature4"] = "Bullet lists (- item or * item)",
+            ["Feature5"] = "Numbered lists (1. item)",
+            ["Feature6"] = "Paragraphs",
+            ["Feature7"] = "Tables",
+            ["Feature8"] = "Hyperlinks [text](url)",
+            ["Feature9"] = "Embedded Images ![alt](url)",
+            ["Feature10"] = "Code blocks (```)",
+            ["Feature11"] = "Inline code (`code`)",
+            ["Feature12"] = "Blockquotes (>)",
+            ["Feature13"] = "Horizontal rules (---)",
+            ["ErrorSelectFile"] = "Please select a file to upload.",
+            ["ErrorEnterContent"] = "Please enter some markdown content.",
+            ["ErrorConverting"] = "Error converting",
+            ["SuccessConverted"] = "converted successfully!"
+        },
+        ["zh"] = new()
+        {
+            ["Title"] = "Markdown 转 Word 转换器",
+            ["Subtitle"] = "轻松将 Markdown 文件转换为 Word 文档",
+            ["PrivacyNote"] = "所有转换都在本地浏览器中完成，您的数据不会上传到任何服务器",
+            ["UploadFileTitle"] = "上传 Markdown 文件",
+            ["SelectFileLabel"] = "选择 Markdown 文件 (.md)",
+            ["SelectFileHelp"] = "选择要转换为 Word 文档的 Markdown 文件",
+            ["ConvertToWord"] = "转换为 Word",
+            ["Converting"] = "转换中...",
+            ["OrEnterText"] = "或输入 Markdown 文本",
+            ["MarkdownContent"] = "Markdown 内容",
+            ["TextPlaceholder"] = "在此输入您的 Markdown 内容...",
+            ["ConvertTextToWord"] = "转换文本为 Word",
+            ["SupportedFeatures"] = "支持的 Markdown 功能",
+            ["Feature1"] = "标题 (# H1, ## H2, 等)",
+            ["Feature2"] = "粗体 (**文本**)",
+            ["Feature3"] = "斜体 (*文本*)",
+            ["Feature4"] = "无序列表 (- 项目 或 * 项目)",
+            ["Feature5"] = "有序列表 (1. 项目)",
+            ["Feature6"] = "段落",
+            ["Feature7"] = "表格",
+            ["Feature8"] = "超链接 [文本](url)",
+            ["Feature9"] = "嵌入图片 ![alt](url)",
+            ["Feature10"] = "代码块 (```)",
+            ["Feature11"] = "行内代码 (`代码`)",
+            ["Feature12"] = "引用 (>)",
+            ["Feature13"] = "分隔线 (---)",
+            ["ErrorSelectFile"] = "请选择要上传的文件。",
+            ["ErrorEnterContent"] = "请输入一些 Markdown 内容。",
+            ["ErrorConverting"] = "转换出错",
+            ["SuccessConverted"] = "转换成功！"
+        }
+    };
+
+    private string T(string key) => translations[currentLanguage].TryGetValue(key, out var value) ? value : key;
+    private string this[string key] => T(key);
+
+    private void SwitchLanguage(string language)
+    {
+        currentLanguage = language;
+    }
 
     private void HandleFileSelected(InputFileChangeEventArgs e)
     {
@@ -128,7 +228,7 @@
     {
         if (selectedFile == null)
         {
-            errorMessage = "Please select a file to upload.";
+            errorMessage = T("ErrorSelectFile");
             return;
         }
 
@@ -150,11 +250,11 @@
             var fileName = Path.GetFileNameWithoutExtension(selectedFile.Name) + ".docx";
             await DownloadFile(fileName, wordBytes);
 
-            successMessage = "File converted successfully!";
+            successMessage = $"{Path.GetFileNameWithoutExtension(selectedFile.Name)} {T("SuccessConverted")}";
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error converting file: {ex.Message}";
+            errorMessage = $"{T("ErrorConverting")}: {ex.Message}";
         }
         finally
         {
@@ -166,7 +266,7 @@
     {
         if (string.IsNullOrWhiteSpace(markdownText))
         {
-            errorMessage = "Please enter some markdown content.";
+            errorMessage = T("ErrorEnterContent");
             return;
         }
 
@@ -183,11 +283,11 @@
             var fileName = $"converted_{DateTime.Now:yyyyMMdd_HHmmss}.docx";
             await DownloadFile(fileName, wordBytes);
 
-            successMessage = "Text converted successfully!";
+            successMessage = T("SuccessConverted");
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error converting text: {ex.Message}";
+            errorMessage = $"{T("ErrorConverting")}: {ex.Message}";
         }
         finally
         {
