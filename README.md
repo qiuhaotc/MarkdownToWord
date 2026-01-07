@@ -2,7 +2,7 @@
 
 Easily convert Markdown files to Word documents using C# and Blazor WebAssembly - all processing happens locally in your browser!
 
-![Web Interface](https://github.com/user-attachments/assets/1b4d50a7-ed57-4131-ba33-662279c31ab4)
+![Web Interface](https://raw.githubusercontent.com/qiuhaotc/MarkdownToWord/refs/heads/main/docs/Index.png)
 
 ## Features
 
@@ -44,7 +44,7 @@ Easily convert Markdown files to Word documents using C# and Blazor WebAssembly 
 
 ### Prerequisites
 
-- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) or later
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) or later
 
 ### Running the Application
 
@@ -61,7 +61,7 @@ Easily convert Markdown files to Word documents using C# and Blazor WebAssembly 
 
 3. Open your browser and navigate to:
    ```
-   http://localhost:5000
+   https://localhost:7144
    ```
 
 Note: Since this is a Blazor WebAssembly application, the first load may take a moment as it downloads the .NET runtime to your browser.
