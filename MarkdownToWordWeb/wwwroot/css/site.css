@@ -12,6 +12,15 @@ html {
   box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
+*:focus {
+  outline: none !important;
+}
+
+h1:focus, h2:focus, h3:focus, h4:focus, h5:focus, h6:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 html {
   position: relative;
   min-height: 100%;
@@ -20,3 +29,6 @@ html {
 body {
   margin-bottom: 60px;
 }
+.card { border: none; border-radius: 10px; }
+.display-4 { font-size: 2.5rem; font-weight: 300; line-height: 1.2; }
+.lead { font-size: 1.25rem; font-weight: 300; }

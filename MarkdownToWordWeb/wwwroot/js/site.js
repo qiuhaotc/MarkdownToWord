@@ -1,4 +1,9 @@
-﻿// Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
-// for details on configuring this project to bundle and minify static web assets.
+﻿// Download file function for Blazor
+window.downloadFile = function (fileName, base64Content) {
+    const linkSource = `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${base64Content}`;
+    const downloadLink = document.createElement("a");
+    downloadLink.href = linkSource;
+    downloadLink.download = fileName;
+    downloadLink.click();
+};
 
-// Write your JavaScript code.

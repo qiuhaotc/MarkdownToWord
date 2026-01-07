@@ -1,0 +1,203 @@
+@page "/"
+@using MarkdownToWordWeb.Services
+@inject MarkdownToWordConverter Converter
+@inject IJSRuntime JS
+
+<PageTitle>Markdown to Word Converter</PageTitle>
+
+<div class="container mt-5">
+    <div class="text-center mb-4">
+        <h1 class="display-4" tabindex="-1">Markdown to Word Converter</h1>
+        <p class="lead">Easily convert your Markdown files to Word documents</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h5 class="card-title mb-4">Upload Markdown File</h5>
+                    
+                    <div class="mb-3">
+                        <label for="markdownFile" class="form-label">Select Markdown File (.md)</label>
+                        <InputFile OnChange="@HandleFileSelected" class="form-control" id="markdownFile" accept=".md,.markdown,.txt" />
+                        <div class="form-text">Choose a Markdown file to convert to Word document</div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button @onclick="ConvertFile" class="btn btn-primary btn-lg" disabled="@(selectedFile == null || isProcessing)">
+                            @if (isProcessing)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span> Converting...</span>
+                            }
+                            else
+                            {
+                                <span>Convert to Word</span>
+                            }
+                        </button>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger mt-3" role="alert">
+                            @errorMessage
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="alert alert-success mt-3" role="alert">
+                            @successMessage
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="card shadow mt-4">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Or Enter Markdown Text</h5>
+                    
+                    <div class="mb-3">
+                        <label for="markdownText" class="form-label">Markdown Content</label>
+                        <textarea @bind="markdownText" class="form-control" id="markdownText" rows="10" placeholder="Enter your markdown content here..."></textarea>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button @onclick="ConvertText" class="btn btn-success btn-lg" disabled="@(string.IsNullOrWhiteSpace(markdownText) || isProcessing)">
+                            @if (isProcessing)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span> Converting...</span>
+                            }
+                            else
+                            {
+                                <span>Convert Text to Word</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Supported Markdown Features</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li>✓ Headings (# H1, ## H2, etc.)</li>
+                                <li>✓ Bold (**text**)</li>
+                                <li>✓ Italic (*text*)</li>
+                                <li>✓ Bullet lists (- item or * item)</li>
+                                <li>✓ Numbered lists (1. item)</li>
+                                <li>✓ Paragraphs</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li>✓ Tables</li>
+                                <li>✓ Hyperlinks [text](url)</li>
+                                <li>✓ Embedded Images ![alt](url)</li>
+                                <li>✓ Code blocks (```)</li>
+                                <li>✓ Inline code (`code`)</li>
+                                <li>✓ Blockquotes (>)</li>
+                                <li>✓ Horizontal rules (---)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IBrowserFile? selectedFile;
+    private string markdownText = string.Empty;
+    private string? errorMessage;
+    private string? successMessage;
+    private bool isProcessing = false;
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        errorMessage = null;
+        successMessage = null;
+    }
+
+    private async Task ConvertFile()
+    {
+        if (selectedFile == null)
+        {
+            errorMessage = "Please select a file to upload.";
+            return;
+        }
+
+        errorMessage = null;
+        successMessage = null;
+        isProcessing = true;
+
+        try
+        {
+            // Read file content
+            using var stream = selectedFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024); // 10MB max
+            using var reader = new StreamReader(stream);
+            var content = await reader.ReadToEndAsync();
+
+            // Convert to Word
+            var wordBytes = Converter.ConvertMarkdownToWord(content);
+
+            // Download file
+            var fileName = Path.GetFileNameWithoutExtension(selectedFile.Name) + ".docx";
+            await DownloadFile(fileName, wordBytes);
+
+            successMessage = "File converted successfully!";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error converting file: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task ConvertText()
+    {
+        if (string.IsNullOrWhiteSpace(markdownText))
+        {
+            errorMessage = "Please enter some markdown content.";
+            return;
+        }
+
+        errorMessage = null;
+        successMessage = null;
+        isProcessing = true;
+
+        try
+        {
+            // Convert to Word
+            var wordBytes = Converter.ConvertMarkdownToWord(markdownText);
+
+            // Download file
+            var fileName = $"converted_{DateTime.Now:yyyyMMdd_HHmmss}.docx";
+            await DownloadFile(fileName, wordBytes);
+
+            successMessage = "Text converted successfully!";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error converting text: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task DownloadFile(string fileName, byte[] fileBytes)
+    {
+        var base64 = Convert.ToBase64String(fileBytes);
+        await JS.InvokeVoidAsync("downloadFile", fileName, base64);
+    }
+}
