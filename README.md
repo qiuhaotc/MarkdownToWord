@@ -169,17 +169,17 @@ This application uses Blazor WebAssembly to run C# code directly in your browser
 Since this is a static Blazor WebAssembly application, you can deploy it anywhere:
 
 ### GitHub Pages
-1. Build: `dotnet publish -c Release`
-2. Copy contents of `bin/Release/net8.0/publish/wwwroot` to your GitHub Pages repository
+1. Build: `dotnet publish -c Release -o ./publish`
+2. Copy contents of `./publish/wwwroot` to your GitHub Pages repository
 3. Add a `.nojekyll` file to prevent Jekyll processing
 
 ### Netlify/Vercel
-1. Build: `dotnet publish -c Release`
-2. Deploy the `wwwroot` folder from the publish output
+1. Build: `dotnet publish -c Release -o ./publish`
+2. Deploy the `wwwroot` folder from `./publish/wwwroot`
 
 ### Traditional Web Server
-1. Build: `dotnet publish -c Release`
-2. Copy `wwwroot` contents to your web server
+1. Build: `dotnet publish -c Release -o ./publish`
+2. Copy contents of `./publish/wwwroot` to your web server
 3. Configure server to handle client-side routing (all routes should serve `index.html`)
 
 ## License
