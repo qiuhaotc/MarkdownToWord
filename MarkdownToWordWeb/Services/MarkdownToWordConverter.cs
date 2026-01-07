@@ -45,6 +45,9 @@ public class MarkdownToWordConverter
             _mainPart.Document = new Document();
             var body = new Body();
 
+            // Add document settings for modern Word format
+            AddDocumentSettings();
+
             // Convert markdown AST to Word document
             foreach (var block in document)
             {
@@ -56,6 +59,26 @@ public class MarkdownToWordConverter
         }
 
         return memoryStream.ToArray();
+    }
+
+    private void AddDocumentSettings()
+    {
+        if (_wordDocument == null || _mainPart == null) return;
+
+        // Add document settings part for modern Word format
+        var settingsPart = _mainPart.AddNewPart<DocumentSettingsPart>();
+        var settings = new Settings(
+            new Compatibility(
+                new CompatibilitySetting
+                {
+                    Name = CompatSettingNameValues.CompatibilityMode,
+                    Uri = "http://schemas.microsoft.com/office/word",
+                    Val = "15" // Word 2013 and later (15 = Word 2013, 16 = Word 2016+)
+                }
+            )
+        );
+        settingsPart.Settings = settings;
+        settingsPart.Settings.Save();
     }
 
     private void ConvertBlock(Block block, Body body)
@@ -83,11 +106,12 @@ public class MarkdownToWordConverter
             case ThematicBreakBlock:
                 ConvertThematicBreak(body);
                 break;
+            case Markdig.Syntax.LinkReferenceDefinitionGroup:
+                // Skip link reference definitions - they are not rendered
+                break;
             default:
-                // For any unhandled block types, try to render as paragraph
-                var para = new Paragraph();
-                para.AppendChild(new Run(new Text(block.ToString() ?? "")));
-                body.AppendChild(para);
+                // For any unhandled block types, skip silently
+                // Do not render unknown block types to avoid outputting class names
                 break;
         }
     }
@@ -182,6 +206,10 @@ public class MarkdownToWordConverter
                     }
                 }
                 break;
+            case EmphasisInline emphasis:
+                // Handle emphasis that might contain links
+                ProcessEmphasis(emphasis, null, paragraph);
+                break;
             default:
                 var defaultRun = new Run();
                 ProcessInline(inline, defaultRun);
@@ -201,26 +229,8 @@ public class MarkdownToWordConverter
                 run.AppendChild(new Text(literal.Content.ToString()) { Space = SpaceProcessingModeValues.Preserve });
                 break;
             case EmphasisInline emphasis:
-                var emphasisRun = new Run();
-                var runProps = new RunProperties();
-
-                if (emphasis.DelimiterCount == 2) // Bold
-                {
-                    runProps.AppendChild(new Bold());
-                }
-                else if (emphasis.DelimiterCount == 1) // Italic
-                {
-                    runProps.AppendChild(new Italic());
-                }
-
-                emphasisRun.AppendChild(runProps);
-                AppendInlines(emphasis, emphasisRun);
-
-                // Copy children from emphasisRun to the main run
-                foreach (var child in emphasisRun.ChildElements.ToList())
-                {
-                    run.AppendChild(child.CloneNode(true));
-                }
+                // Process emphasis with possible nested links
+                ProcessEmphasis(emphasis, run, null);
                 break;
             case CodeInline code:
                 var codeRun = new Run();
@@ -240,9 +250,231 @@ public class MarkdownToWordConverter
             case LineBreakInline:
                 run.AppendChild(new Break());
                 break;
+            case LinkInline link:
+                // Handle links when not directly in paragraph (e.g., in emphasis)
+                if (!link.IsImage && !string.IsNullOrEmpty(link.Url))
+                {
+                    // Need to create hyperlink at paragraph level, so we can't handle it here
+                    // Just add the text for now
+                    run.AppendChild(new Text(GetLinkText(link)) { Space = SpaceProcessingModeValues.Preserve });
+                }
+                else if (!link.IsImage)
+                {
+                    AppendInlines(link, run);
+                }
+                break;
             case ContainerInline container:
                 AppendInlines(container, run);
                 break;
+        }
+    }
+
+    private void ProcessEmphasis(EmphasisInline emphasis, Run? existingRun, Paragraph? paragraph)
+    {
+        // Check if emphasis contains links
+        bool containsLink = ContainsLink(emphasis);
+
+        if (containsLink && paragraph != null)
+        {
+            // Process emphasis with links at paragraph level
+            foreach (var child in emphasis)
+            {
+                if (child is LinkInline link && !link.IsImage && !string.IsNullOrEmpty(link.Url))
+                {
+                    CreateHyperlinkWithEmphasis(link, paragraph, emphasis.DelimiterCount);
+                }
+                else if (child is LiteralInline literal)
+                {
+                    var run = new Run();
+                    var runProps = new RunProperties();
+
+                    if (emphasis.DelimiterCount == 2) // Bold
+                    {
+                        runProps.AppendChild(new Bold());
+                    }
+                    else if (emphasis.DelimiterCount == 1) // Italic
+                    {
+                        runProps.AppendChild(new Italic());
+                    }
+
+                    run.AppendChild(runProps);
+                    run.AppendChild(new Text(literal.Content.ToString()) { Space = SpaceProcessingModeValues.Preserve });
+                    paragraph.AppendChild(run);
+                }
+                else if (child is ContainerInline container)
+                {
+                    ProcessEmphasizedContainer(container, paragraph, emphasis.DelimiterCount);
+                }
+            }
+        }
+        else if (paragraph != null)
+        {
+            // Process emphasis without links at paragraph level
+            var run = new Run();
+            var runProps = new RunProperties();
+
+            if (emphasis.DelimiterCount == 2) // Bold
+            {
+                runProps.AppendChild(new Bold());
+            }
+            else if (emphasis.DelimiterCount == 1) // Italic
+            {
+                runProps.AppendChild(new Italic());
+            }
+            else if (emphasis.DelimiterCount == 3) // Bold + Italic
+            {
+                runProps.AppendChild(new Bold());
+                runProps.AppendChild(new Italic());
+            }
+
+            run.AppendChild(runProps);
+            AppendInlines(emphasis, run);
+
+            if (run.HasChildren)
+            {
+                paragraph.AppendChild(run);
+            }
+        }
+        else if (existingRun != null)
+        {
+            // Process emphasis in existing run (nested in other formatting)
+            var emphasisRun = new Run();
+            var runProps = new RunProperties();
+
+            if (emphasis.DelimiterCount == 2) // Bold
+            {
+                runProps.AppendChild(new Bold());
+            }
+            else if (emphasis.DelimiterCount == 1) // Italic
+            {
+                runProps.AppendChild(new Italic());
+            }
+            else if (emphasis.DelimiterCount == 3) // Bold + Italic
+            {
+                runProps.AppendChild(new Bold());
+                runProps.AppendChild(new Italic());
+            }
+
+            emphasisRun.AppendChild(runProps);
+            AppendInlines(emphasis, emphasisRun);
+
+            // Copy children from emphasisRun to the main run
+            foreach (var child in emphasisRun.ChildElements.ToList())
+            {
+                existingRun.AppendChild(child.CloneNode(true));
+            }
+        }
+    }
+
+    private bool ContainsLink(ContainerInline container)
+    {
+        foreach (var inline in container)
+        {
+            if (inline is LinkInline link && !link.IsImage)
+            {
+                return true;
+            }
+            if (inline is ContainerInline nested && ContainsLink(nested))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void ProcessEmphasizedContainer(ContainerInline container, Paragraph paragraph, int delimiterCount)
+    {
+        foreach (var inline in container)
+        {
+            if (inline is LinkInline link && !link.IsImage && !string.IsNullOrEmpty(link.Url))
+            {
+                CreateHyperlinkWithEmphasis(link, paragraph, delimiterCount);
+            }
+            else if (inline is LiteralInline literal)
+            {
+                var run = new Run();
+                var runProps = new RunProperties();
+
+                if (delimiterCount == 2) // Bold
+                {
+                    runProps.AppendChild(new Bold());
+                }
+                else if (delimiterCount == 1) // Italic
+                {
+                    runProps.AppendChild(new Italic());
+                }
+
+                run.AppendChild(runProps);
+                run.AppendChild(new Text(literal.Content.ToString()) { Space = SpaceProcessingModeValues.Preserve });
+                paragraph.AppendChild(run);
+            }
+            else if (inline is ContainerInline nested)
+            {
+                ProcessEmphasizedContainer(nested, paragraph, delimiterCount);
+            }
+        }
+    }
+
+    private void CreateHyperlinkWithEmphasis(LinkInline link, Paragraph paragraph, int delimiterCount)
+    {
+        if (_mainPart == null) return;
+
+        try
+        {
+            Uri uri;
+            try
+            {
+                var normalizedUrl = NormalizeUrl(link.Url ?? "");
+                uri = new Uri(normalizedUrl, UriKind.RelativeOrAbsolute);
+            }
+            catch (Exception)
+            {
+                uri = new Uri("http://invalid-url/", UriKind.Absolute);
+            }
+
+            var hyperlinkRel = _mainPart.AddHyperlinkRelationship(uri, true);
+
+            var runProps = new RunProperties(
+                new Underline { Val = UnderlineValues.Single },
+                new Color { Val = "0563C1" }
+            );
+
+            if (delimiterCount == 2) // Bold
+            {
+                runProps.AppendChild(new Bold());
+            }
+            else if (delimiterCount == 1) // Italic
+            {
+                runProps.AppendChild(new Italic());
+            }
+
+            var hyperlink = new Hyperlink(new Run(
+                runProps,
+                new Text(GetLinkText(link)) { Space = SpaceProcessingModeValues.Preserve }
+            ))
+            {
+                Id = hyperlinkRel.Id
+            };
+
+            paragraph.AppendChild(hyperlink);
+        }
+        catch
+        {
+            var run = new Run();
+            var runProps = new RunProperties();
+
+            if (delimiterCount == 2)
+            {
+                runProps.AppendChild(new Bold());
+            }
+            else if (delimiterCount == 1)
+            {
+                runProps.AppendChild(new Italic());
+            }
+
+            run.AppendChild(runProps);
+            run.AppendChild(new Text(GetLinkText(link)) { Space = SpaceProcessingModeValues.Preserve });
+            paragraph.AppendChild(run);
         }
     }
 
@@ -399,25 +631,45 @@ public class MarkdownToWordConverter
 
     private void ConvertCodeBlock(CodeBlock codeBlock, Body body)
     {
-        var paragraph = new Paragraph();
-        var paraProps = new ParagraphProperties(
-            new Shading { Val = ShadingPatternValues.Clear, Fill = "F5F5F5" },
-            new SpacingBetweenLines { Before = "100", After = "100" }
-        );
-        paragraph.AppendChild(paraProps);
+        // Get all lines as a list
+        var lines = codeBlock.Lines.Lines.ToList();
 
-        var run = new Run();
-        var runProps = new RunProperties(
-            new RunFonts { Ascii = "Courier New" },
-            new FontSize { Val = "20" }
-        );
-        run.AppendChild(runProps);
+        if (lines.Count == 0)
+        {
+            // If code block is empty, add one empty paragraph
+            var emptyParagraph = new Paragraph();
+            var emptyParaProps = new ParagraphProperties(
+                new Shading { Val = ShadingPatternValues.Clear, Fill = "F5F5F5" },
+                new SpacingBetweenLines { Before = "100", After = "100" }
+            );
+            emptyParagraph.AppendChild(emptyParaProps);
+            body.AppendChild(emptyParagraph);
+            return;
+        }
 
-        var code = codeBlock.Lines.ToString();
+        // Process each line of code as a separate paragraph to preserve formatting
+        for (int i = 0; i < lines.Count; i++)
+        {
+            var paragraph = new Paragraph();
+            var paraProps = new ParagraphProperties(
+                new Shading { Val = ShadingPatternValues.Clear, Fill = "F5F5F5" },
+                new SpacingBetweenLines { Before = i == 0 ? "100" : "0", After = i == lines.Count - 1 ? "100" : "0", Line = "240", LineRule = LineSpacingRuleValues.Auto }
+            );
+            paragraph.AppendChild(paraProps);
 
-        run.AppendChild(new Text(code) { Space = SpaceProcessingModeValues.Preserve });
-        paragraph.AppendChild(run);
-        body.AppendChild(paragraph);
+            var run = new Run();
+            var runProps = new RunProperties(
+                new RunFonts { Ascii = "Courier New" },
+                new FontSize { Val = "20" }
+            );
+            run.AppendChild(runProps);
+
+            var lineText = lines[i].ToString();
+            run.AppendChild(new Text(lineText) { Space = SpaceProcessingModeValues.Preserve });
+
+            paragraph.AppendChild(run);
+            body.AppendChild(paragraph);
+        }
     }
 
     private void ConvertQuoteBlock(QuoteBlock quote, Body body)
@@ -461,6 +713,22 @@ public class MarkdownToWordConverter
         body.AppendChild(paragraph);
     }
 
+    private string NormalizeUrl(string url)
+    {
+        if (string.IsNullOrEmpty(url))
+            return url;
+
+        // Handle paths starting with backslash (e.g., \File\README.md)
+        // Convert backslashes to forward slashes for URI compatibility
+        if (url.StartsWith("\\") || url.Contains("\\"))
+        {
+            // Replace backslashes with forward slashes
+            url = url.Replace("\\", "/");
+        }
+
+        return url;
+    }
+
     private void CreateHyperlinkInParagraph(LinkInline link, Paragraph paragraph)
     {
         // Create a proper Word hyperlink with relationship
@@ -471,7 +739,8 @@ public class MarkdownToWordConverter
             Uri uri;
             try
             {
-                uri = new Uri(link.Url ?? "", UriKind.Absolute);
+                var normalizedUrl = NormalizeUrl(link.Url ?? "");
+                uri = new Uri(normalizedUrl, UriKind.RelativeOrAbsolute);
             }
             catch (Exception)
             {

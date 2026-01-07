@@ -12,7 +12,7 @@ You can use **bold text** to emphasize important points.
 
 You can also use *italic text* for subtle emphasis.
 
-You can combine **_bold and italic_** for extra emphasis.
+You can combine ***bold and italic*** for extra emphasis.
 
 ### Inline Code
 
@@ -41,7 +41,7 @@ You can also use reference-style links: [MarkdownToWord Repository][repo].
 
 Images are supported! Here's an example:
 
-![Sample Image](https://raw.githubusercontent.com/qiuhaotc/HarmonyOSPlayground/refs/heads/main/Docs/1%E4%B8%BB%E9%A1%B5.png)
+![Sample Image](https://raw.githubusercontent.com/qiuhaotc/MarkdownToWord/refs/heads/main/docs/Index.png)
 
 The converter will show image placeholders with the URL in the Word document.
 
